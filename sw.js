@@ -7,6 +7,7 @@ const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
+  './icon.png',
   './icon.svg',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -66,8 +67,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification ? payload.notification.title : 'TaskMaster Alerta';
   const notificationOptions = {
     body: payload.notification ? payload.notification.body : 'Tienes una tarea programada.',
-    icon: './icon.svg',
-    badge: './icon.svg',
+    icon: './icon.png',
+    badge: './icon.png',
     vibrate: [300, 100, 300, 100, 500],
     requireInteraction: true,
     renotify: true,
