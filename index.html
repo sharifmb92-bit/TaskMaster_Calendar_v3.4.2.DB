@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>TaskMaster Calendar Pro_v 3.4.2</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#23130d">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TaskMaster">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" href="icon.svg">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Dexie.js para IndexedDB -->
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
+    <style>
+        .theme-cafe {
+            --bg-main: #23130d; --bg-card: #341e16; --bg-input: #1a0d08;
+            --text-main: #f8f1ed; --text-muted: #b8a398; --accent: #e5934a;
+            --card-shadow: rgba(0, 0, 0, 0.4);
+        }
+        .theme-gris {
+            --bg-main: #141414; --bg-card: #222222; --bg-input: #0d0d0d;
+            --text-main: #ffffff; --text-muted: #999999; --accent: #a0a0a0;
+            --card-shadow: rgba(0, 0, 0, 0.5);
+        }
+        .theme-marino {
+            --bg-main: #0b1120; --bg-card: #162032; --bg-input: #060a12;
+            --text-main: #f1f5f9; --text-muted: #8d9eb5; --accent: #38bdf8;
+            --card-shadow: rgba(0, 0, 0, 0.45);
+        }
+        .theme-cream {
+            --bg-main: #f4efea; --bg-card: #ffffff; --bg-input: #e8dfd8;
+            --text-main: #2b1810; --text-muted: #7a6b63; --accent: #d97724;
+            --card-shadow: rgba(43, 24, 16, 0.08);
+        }
+        .theme-menta {
+            --bg-main: #e8f5e9; --bg-card: #ffffff; --bg-input: #c8e6c9;
+            --text-main: #1b5e20; --text-muted: #4f7e52; --accent: #2e7d32;
+            --card-shadow: rgba(27, 94, 32, 0.08);
+        }
+        .theme-cielo {
+            --bg-main: #e0f2fe; --bg-card: #ffffff; --bg-input: #bae6fd;
+            --text-main: #0369a1; --text-muted: #475569; --accent: #0284c7;
+            --card-shadow: rgba(3, 105, 161, 0.08);
+        }
+
+        :root {
+            --color-high: #e54d42;
+            --color-medium: #e69138;
+            --color-low: #6bb05d;
+            --color-event: #38bdf8;
+            --color-task: #6bb05d;
+            --color-note: #e5934a;
+        }
+
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-main); color: var(--text-main);
+            display: flex; justify-content: center; min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .app-container {
+            width: 100%; max-width: 480px; background: var(--bg-card);
+            border-radius: 0; padding: 20px 20px 90px 20px; box-shadow: 0 16px 48px var(--card-shadow);
+            position: relative; overflow-y: auto; min-height: 100vh;
+        }
+
+        @media (min-width: 500px) {
+            body { padding: 16px; }
+            .app-container { border-radius: 28px; min-height: 92vh; max-height: 95vh; }
+        }
+
+        .screen { display: none; animation: slideIn 0.22s ease forwards; }
+        .screen.active { display: block; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+        }
+        .top-bar h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text-main); }
+        .top-bar-actions { display: flex; gap: 8px; }
+
+        .search-box {
+            margin-bottom: 14px; position: relative;
+        }
+        .search-box input {
+            padding-left: 38px; font-size: 0.88rem; background: var(--bg-input); border-radius: 14px;
+        }
+        .search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.6; font-size: 0.85rem;
+        }
+
+        .progress-container {
+            background: var(--bg-input); border-radius: 16px; padding: 12px 14px; margin-bottom: 14px;
+            border: 1px solid rgba(128,128,128,0.1);
+        }
+        .progress-header {
+            display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; margin-bottom: 8px;
+        }
+        .progress-bar-bg {
+            background: rgba(128,128,128,0.15); height: 8px; border-radius: 10px; overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: var(--color-task); height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .icon-btn {
+            background: var(--bg-input); border: 1px solid rgba(128,128,128,0.15);
+            color: var(--text-main); width: 40px; height: 40px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-size: 1.05rem; transition: transform 0.15s ease, background 0.15s ease;
+        }
+        .icon-btn:active { transform: scale(0.92); }
+
+        .status-banner {
+            font-size: 0.75rem; padding: 11px 14px; border-radius: 14px; margin-bottom: 14px;
+            background: var(--bg-input); color: var(--color-medium); text-align: center; cursor: pointer;
+            border: 1px dashed var(--color-medium); font-weight: 600;
+        }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 480px; background: var(--bg-input);
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+            border-top: 1px solid rgba(128,128,128,0.12); z-index: 9000;
+            backdrop-filter: blur(10px);
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: var(--text-muted); font-size: 0.72rem; font-weight: 600; cursor: pointer;
+            background: none; border: none; flex: 1; transition: color 0.15s ease, transform 0.1s ease;
+        }
+        .nav-item .nav-icon { font-size: 1.25rem; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item:active { transform: scale(0.92); }
+
+        .fab-btn {
+            position: fixed; bottom: 78px; right: calc(50% - 215px);
+            width: 54px; height: 54px; border-radius: 50%; background: var(--accent);
+            color: #ffffff; border: none; font-size: 1.8rem; font-weight: 300;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35); cursor: pointer; z-index: 9500;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        @media (max-width: 480px) {
+            .fab-btn { right: 22px; }
+        }
+        .fab-btn:active { transform: scale(0.9); }
+
+        .week-bar {
+            display: flex; justify-content: space-between; gap: 6px; margin-bottom: 16px;
+            background: var(--bg-input); padding: 10px; border-radius: 18px;
+        }
+        .week-day-chip {
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+            padding: 8px 4px; border-radius: 14px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+        }
+        .week-day-chip .day-name { font-size: 0.68rem; color: var(--text-muted); font-weight: 700; }
+        .week-day-chip .day-num { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
+        .week-day-chip.active { background: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .week-day-chip.active .day-name, .week-day-chip.active .day-num { color: #ffffff; }
+        .week-day-chip.today-highlight:not(.active) { border: 1px solid var(--accent); }
+
+        .calendar-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+        }
+        .nav-btn {
+            background: var(--bg-input); border: 1px solid rgba(128,128,128,0.12);
+            color: var(--text-main); font-size: 1.1rem; width: 38px; height: 38px;
+            border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .nav-btn:active { transform: scale(0.9); }
+
+        .calendar-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;
+        }
+        .calendar-day-name { font-size: 0.72rem; color: var(--text-muted); font-weight: bold; padding-bottom: 6px; }
+
+        .calendar-cell {
+            background: var(--bg-input); aspect-ratio: 1; border-radius: 14px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; position: relative; transition: transform 0.12s ease; font-weight: 600;
+        }
+        .calendar-cell.empty { background: transparent; cursor: default; }
+        .calendar-cell:not(.empty):active { transform: scale(0.92); }
+        .calendar-cell.today { border: 2px solid var(--accent); }
+
+        .indicator-bar-container {
+            position: absolute; bottom: 5px; left: 6px; right: 6px;
+            display: flex; gap: 2px; height: 3px; border-radius: 3px; overflow: hidden;
+        }
+        .ind-bar { flex: 1; height: 100%; }
+
+        .note-dot-hint {
+            position: absolute; top: 4px; right: 5px; width: 6px; height: 6px;
+            border-radius: 50%; background-color: var(--color-note);
+        }
+
+        .card {
+            background: var(--bg-input); border-radius: 20px; padding: 16px 18px; margin-bottom: 16px;
+            border: 1px solid rgba(128,128,128,0.12); width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        }
+        .card-title {
+            font-size: 0.78rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+        }
+
+        .title-event { color: var(--color-event); }
+        .title-task { color: var(--color-task); }
+        .title-note { color: var(--color-note); }
+
+        .card-event { border-left: 4px solid var(--color-event); }
+        .card-task { border-left: 4px solid var(--color-task); }
+        .card-note { border-left: 4px solid var(--color-note); }
+
+        .form-group { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; width: 100%; }
+        .form-group:last-child { margin-bottom: 0; }
+        label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+        input, select, textarea {
+            background: var(--bg-card); border: 1px solid rgba(128,128,128,0.15);
+            color: var(--text-main); padding: 12px 14px; border-radius: 12px; outline: none; font-size: 0.92rem; width: 100%;
+            transition: border-color 0.2s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+        }
+        
+        .notes-card-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;
+        }
+        .notes-card-container textarea {
+            resize: vertical; min-height: 140px; font-family: inherit; width: 100%; margin: 0 auto; display: block;
+        }
+
+        .priority-chips { display: flex; gap: 8px; }
+        .priority-chip {
+            flex: 1; padding: 10px 6px; border-radius: 12px; text-align: center; font-size: 0.78rem;
+            font-weight: 700; cursor: pointer; border: 2px solid transparent; color: #ffffff;
+            opacity: 0.55; transition: opacity 0.15s, transform 0.1s;
+        }
+        .priority-chip.selected { opacity: 1; border-color: rgba(255,255,255,0.8); }
+        .priority-chip:active { transform: scale(0.95); }
+        .chip-low { background: var(--color-low); }
+        .chip-medium { background: var(--color-medium); }
+        .chip-high { background: var(--color-high); }
+
+        .category-filter-bar {
+            display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none;
+        }
+        .category-chip {
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+            background: var(--bg-input); border: 1px solid rgba(128,128,128,0.15); color: var(--text-muted);
+            cursor: pointer; white-space: nowrap; transition: all 0.15s ease;
+        }
+        .category-chip.active {
+            background: var(--accent); color: #ffffff; border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 13px; border-radius: 14px; border: none; font-weight: 800;
+            font-size: 0.92rem; cursor: pointer; text-align: center; width: 100%; transition: transform 0.1s ease, background-color 0.15s ease;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--accent); color: #ffffff; }
+        .btn-event { background: var(--color-event); color: #020617; }
+        .btn-task { background: var(--color-task); color: #020617; }
+        .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid rgba(128,128,128,0.2); }
+        .btn-small { padding: 8px 12px; font-size: 0.8rem; border-radius: 10px; width: auto; }
+        .btn-reminder {
+            background: rgba(229, 147, 74, 0.12); color: var(--accent); border: 1px solid var(--accent);
+            padding: 4px 8px; font-size: 0.72rem; border-radius: 8px; cursor: pointer; margin-left: 6px; font-weight: 700;
+        }
+
+        .ia-toolbar {
+            display: flex; gap: 6px; margin-top: 10px; width: 100%; flex-wrap: wrap;
+        }
+        .btn-ia {
+            flex: 1; min-width: 90px; background: var(--bg-card); border: 1px solid var(--accent);
+            color: var(--accent); padding: 8px; border-radius: 12px; font-size: 0.72rem;
+            font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+        }
+        .btn-ia:active { transform: scale(0.95); }
+        .btn-ia.recording { background: #e54d42; color: #ffffff; border-color: #e54d42; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .theme-selector-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; width: 100%;
+        }
+        .theme-card-btn {
+            background: var(--bg-card); border: 2px solid rgba(128,128,128,0.15);
+            border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column;
+            align-items: center; gap: 6px; cursor: pointer; transition: transform 0.1s, border-color 0.2s;
+        }
+        .theme-card-btn.active {
+            border-color: var(--accent); background: var(--bg-input);
+        }
+        .theme-card-btn:active { transform: scale(0.95); }
+        .theme-color-preview {
+            width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1);
+        }
+        .theme-card-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-main); text-align: center;
+        }
+
+        .settings-section { margin-bottom: 20px; }
+        .settings-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,0.08);
+        }
+
+        .event-card {
+            background: var(--bg-input); padding: 14px 16px; border-radius: 16px; margin-bottom: 10px;
+            display: flex; align-items: flex-start; gap: 12px; border: 1px solid rgba(128,128,128,0.08);
+        }
+        .event-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+        .event-info { flex: 1; min-width: 0; }
+        .event-time { font-size: 0.72rem; color: var(--accent); font-weight: 700; display: flex; align-items: center; }
+        .event-title-txt { font-size: 0.92rem; font-weight: 600; margin-top: 1px; }
+        .event-desc-txt { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+        .event-del {
+            background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;
+            padding: 2px 4px; flex-shrink: 0;
+        }
+
+        .todo-item {
+            background: var(--bg-input); padding: 12px 14px; border-radius: 16px; margin-bottom: 10px;
+            border: 1px solid rgba(128,128,128,0.08); transition: opacity 0.2s ease;
+        }
+        .todo-main-row {
+            display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+        }
+        .todo-item.done .todo-text-span { text-decoration: line-through; opacity: 0.55; }
+        
+        .subtasks-container {
+            margin-top: 8px; padding-left: 28px; display: flex; flex-direction: column; gap: 4px;
+        }
+        .subtask-item {
+            display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted);
+        }
+        .subtask-item.done { text-decoration: line-through; opacity: 0.5; }
+
+        #map-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            z-index: 9999; padding: 20px; flex-direction: column; justify-content: center; align-items: center;
+        }
+        #map-container-box {
+            width: 100%; max-width: 440px; height: 380px; border-radius: 20px; overflow: hidden;
+            border: 2px solid var(--accent); margin-bottom: 12px; position: relative;
+        }
+        #map { width: 100%; height: 100%; }
+
+        .map-gps-btn {
+            position: absolute; bottom: 12px; right: 12px; z-index: 1000;
+            background: var(--bg-card); border: 1px solid var(--accent); color: var(--text-main);
+            padding: 8px 12px; border-radius: 10px; font-size: 0.78rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .chart-box {
+            display: flex; justify-content: center; align-items: center; margin: 16px 0; width: 100%;
+        }
+
+        .version-tag { text-align: center; font-size: 0.7rem; color: var(--text-muted); margin-top: 12px; }
+
+        .profile-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px;
+        }
+        .profile-card {
+            background: var(--bg-card); border: 2px solid rgba(128,128,128,0.15);
+            border-radius: 18px; padding: 14px; display: flex; flex-direction: column;
+            align-items: center; gap: 8px; text-align: center; cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+        .profile-card:active { transform: scale(0.95); }
+        .profile-card.active { border-color: var(--accent); background: var(--bg-input); }
+        .profile-icon { font-size: 2rem; }
+        .profile-title { font-size: 0.9rem; font-weight: 800; color: var(--text-main); }
+        .profile-desc { font-size: 0.7rem; color: var(--text-muted); line-height: 1.3; }
+
+        #tutorial-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+            z-index: 10000; padding: 24px; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .tutorial-card {
+            background: var(--bg-card); border: 2px solid var(--accent); border-radius: 24px;
+            padding: 24px; width: 100%; max-width: 400px; text-align: center; color: var(--text-main);
+        }
+        .tutorial-step-icon { font-size: 3rem; margin-bottom: 12px; }
+        .tutorial-step-title { font-size: 1.15rem; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+        .tutorial-step-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
+        .tutorial-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    </style>
+</head>
+<body class="theme-cafe" onclick="unlockAudioContext();">
+
+    <div class="app-container">
+
+        <!-- CABECERA SUPERIOR GLOBAL -->
+        <div class="top-bar">
+            <h1 id="app-header-title">TaskMaster Pro</h1>
+            <div class="top-bar-actions">
+                <button class="icon-btn" onclick="triggerHaptic(); openTutorialModal(0);" title="Guía de uso">📖</button>
+                <button class="icon-btn" onclick="triggerHaptic(); openSettingsScreen();" title="Ajustes">⚙️</button>
+            </div>
+        </div>
+
+        <!-- BUSCADOR GLOBAL INTELIGENTE -->
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="globalSearchInput" placeholder="Buscar tarea, evento o nota..." oninput="handleGlobalSearch(this.value)">
+        </div>
+
+        <div id="permission-banner" class="status-banner" style="display:none;" onclick="triggerHaptic(); requestPermissions();">
+            Toca aquí para activar notificaciones y Firebase Cloud Push
+        </div>
+
+        <!-- RESULTADOS DE BÚSQUEDA GLOBAL -->
+        <div id="search-results-box" class="card" style="display:none;">
+            <div class="card-title title-event">🔎 Resultados Encontrados</div>
+            <div id="search-results-list"></div>
+        </div>
+
+        <!-- 0. PANTALLA BIENVENIDA / SELECCIÓN DE PERFIL -->
+        <div id="screen-welcome" class="screen">
+            <div style="text-align: center; margin-top: 10px; margin-bottom: 16px;">
+                <h2 style="font-size: 1.4rem; color: var(--accent);">¡Bienvenido a TaskMaster!</h2>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 6px;">
+                    Elige tu perfil para adaptar los ejemplos, recordatorios y ubicaciones a tu día a día:
+                </p>
+            </div>
+
+            <div class="profile-grid">
+                <div class="profile-card" onclick="selectUserProfile('student')">
+                    <span class="profile-icon">🎓</span>
+                    <span class="profile-title">Estudiante</span>
+                    <span class="profile-desc">Exámenes, entregas, clases, campus y biblioteca.</span>
+                </div>
+                <div class="profile-card" onclick="selectUserProfile('health')">
+                    <span class="profile-icon">🏥</span>
+                    <span class="profile-title">Salud / Médico</span>
+                    <span class="profile-desc">Guardias, citas, pacientes y centro médico.</span>
+                </div>
+                <div class="profile-card" onclick="selectUserProfile('store')">
+                    <span class="profile-icon">🏪</span>
+                    <span class="profile-title">Comercio</span>
+                    <span class="profile-desc">Inventario, proveedores, pedidos y tienda.</span>
+                </div>
+                <div class="profile-card" onclick="selectUserProfile('transport')">
+                    <span class="profile-icon">🚍</span>
+                    <span class="profile-title">Transporte</span>
+                    <span class="profile-desc">Turnos, rutas, vehículo, mantenimiento y cochera.</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 16px;">
+                <div class="profile-card" style="width: 100%; flex-direction: row; justify-content: center;" onclick="selectUserProfile('general')">
+                    <span class="profile-icon" style="font-size:1.5rem;">💼</span>
+                    <div style="text-align: left;">
+                        <span class="profile-title">General / Personal</span>
+                        <div class="profile-desc">Uso universal para cualquier tarea o evento personal.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. PESTAÑA CALENDARIO -->
+        <div id="tab-calendar" class="screen active">
+            <div class="calendar-header">
+                <button class="nav-btn" onclick="triggerHaptic(); changeMonth(-1);">◀</button>
+                <h2 id="calendar-month-year" style="margin:0; color: var(--text-main); font-size: 1.15rem; text-align: center; min-width: 150px;">Agosto 2026</h2>
+                <button class="nav-btn" onclick="triggerHaptic(); changeMonth(1);">▶</button>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+
+            <div class="event-list-title" style="margin-top: 24px;">Detalles del día (<span id="cal-selected-date-label">Hoy</span>)</div>
+            <div id="cal-selected-events-list"></div>
+        </div>
+
+        <!-- 2. PESTAÑA TAREAS -->
+        <div id="tab-tasks" class="screen">
+            <div class="week-bar" id="week-bar"></div>
+
+            <!-- FILTRO DE CATEGORÍAS -->
+            <div class="category-filter-bar">
+                <div class="category-chip active" onclick="filterTaskCategory('all', this)">Todas</div>
+                <div class="category-chip" onclick="filterTaskCategory('trabajo', this)">💼 Trabajo</div>
+                <div class="category-chip" onclick="filterTaskCategory('personal', this)">🏠 Personal</div>
+                <div class="category-chip" onclick="filterTaskCategory('urgente', this)">🔥 Urgente</div>
+            </div>
+
+            <!-- BARRA DE PROGRESO DE LOGROS -->
+            <div class="progress-container">
+                <div class="progress-header">
+                    <span>Progreso del Día</span>
+                    <span id="progress-percent-txt">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button class="btn btn-secondary btn-small" style="flex:1;" onclick="triggerHaptic(); loadPresetTemplate('rutina');">📋 Cargar Plantilla</button>
+                <button class="btn btn-secondary btn-small" style="flex:1;" onclick="triggerHaptic(); shareDaySummary();">📤 Compartir</button>
+            </div>
+
+            <div class="event-list-title">Tareas para este día</div>
+            <div id="tasks-day-list"></div>
+
+            <div id="new-task-form-card" class="card card-task" style="display:none; margin-top: 16px;">
+                <div class="card-title title-task">🟢 Nueva Tarea Pro</div>
+                <div class="form-group">
+                    <label>Nombre de la Tarea</label>
+                    <input type="text" id="taskInputText" placeholder="Ej. Tarea pendiente...">
+                </div>
+
+                <div class="form-group">
+                    <label>Categoría / Etiqueta</label>
+                    <select id="taskCategorySelect">
+                        <option value="trabajo">💼 Trabajo / Profesional</option>
+                        <option value="personal">🏠 Personal / Casa</option>
+                        <option value="urgente">🔥 Urgente / Prioritario</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Subtareas / Pasos (Separados por coma)</label>
+                    <input type="text" id="taskSubtasksInput" placeholder="Ej. Paso 1, Paso 2, Paso 3">
+                </div>
+
+                <div class="form-group">
+                    <label>Recurrencia / Repetición</label>
+                    <select id="taskRepeatSelect">
+                        <option value="none">Sin repetición (Una vez)</option>
+                        <option value="daily">Cada día</option>
+                        <option value="weekly">Cada semana</option>
+                        <option value="monthly">Cada mes</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Programa adicional / Geofencing</label>
+                    <select id="taskLocSelect" onchange="handleLocSelectChange(this.value)">
+                        <option value="none">Sin alerta de ubicación</option>
+                        <option value="custom_map">📍 Elegir punto libre en el mapa...</option>
+                        <option value="central" id="opt-loc-central">Mi Base / Central</option>
+                        <option value="casa">Mi Casa</option>
+                        <option value="punto_a" id="opt-loc-punto-a">📍 Mi Punto A</option>
+                        <option value="punto_b" id="opt-loc-punto-b">📍 Mi Punto B</option>
+                        <option value="gasolinera">⛽ Gasolinera / Repostaje</option>
+                        <option value="super">Cualquier Supermercado</option>
+                    </select>
+                    <div id="event-custom-coord-status" style="font-size: 0.75rem; color: var(--color-event); display: none; margin-top: 4px;">
+                        📍 Punto personalizado seleccionado
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Hora opcional de aviso</label>
+                    <input type="time" id="taskTimeInput">
+                </div>
+
+                <button class="btn btn-task" style="margin-top: 8px;" onclick="triggerHaptic(); saveTaskFromForm();">✓ Guardar Tarea</button>
+            </div>
+        </div>
+
+        <!-- 3. PESTAÑA NOTAS -->
+        <div id="tab-notes" class="screen">
+            <div class="card card-note notes-card-container">
+                <div class="card-title title-note" style="width: 100%; justify-content: space-between;">
+                    <span>🟠 Bloc de Notas (<span id="notes-date-label">Hoy</span>)</span>
+                    <button class="btn-reminder" onclick="triggerHaptic(); shareDaySummary();">📤 Compartir</button>
+                </div>
+                
+                <div class="form-group" style="width: 100%;">
+                    <textarea id="tab-day-notes" placeholder="Escribe aquí tus notas o anotaciones..." oninput="saveTabNotes()"></textarea>
+                </div>
+
+                <div class="ia-toolbar">
+                    <button class="btn-ia" id="btn-dictate-notes" onclick="triggerHaptic(); toggleDictation();">🎙️ Dictar</button>
+                    <button class="btn-ia" onclick="triggerHaptic(); formatNotesWithIA();">✨ Formato</button>
+                    <button class="btn-ia" onclick="triggerHaptic(); toggleStrikethroughNote();">✏️ Tachar</button>
+                    <button class="btn-ia" onclick="triggerHaptic(); convertNoteToAlarm();">🔔 Alarma</button>
+                    <button class="btn-ia" style="border-color:#e54d42; color:#e54d42;" onclick="triggerHaptic(); clearTabNotes();">🧹 Limpiar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. PESTAÑA RESUMEN -->
+        <div id="tab-summary" class="screen">
+            <div class="card">
+                <div class="card-title title-event">📊 Resumen Visual De Actividad</div>
+                
+                <div class="chart-box">
+                    <canvas id="summaryCanvas" width="320" height="180"></canvas>
+                </div>
+
+                <div class="card" style="background:var(--bg-card); border-color:var(--accent); margin-top:10px;">
+                    <div style="font-size:0.75rem; font-weight:bold; color:var(--accent); margin-bottom:4px;">✨ Asistente Resumen IA</div>
+                    <div id="ia-executive-summary-text" style="font-size:0.82rem; color:var(--text-main); line-height:1.4;">
+                        Analizando tu día...
+                    </div>
+                </div>
+
+                <div style="font-size: 0.88rem; line-height: 1.6; color: var(--text-main);">
+                    <p>• <strong>Perfil activo:</strong> <span id="summary-profile-name" style="color:var(--accent); font-weight:bold;">General</span></p>
+                    <p>• <strong>Tareas pendientes hoy:</strong> <span id="summary-pending-count">0</span></p>
+                    <p>• <strong>Eventos programados hoy:</strong> <span id="summary-events-count">0</span></p>
+                    <p>• <strong>Ubicaciones guardadas:</strong> <span id="summary-locs-count">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANTALLA SECUNDARIA: NUEVO EVENTO / ALARMA -->
+        <div id="screen-day-modal" class="screen">
+            <div class="day-header">
+                <button class="icon-btn" onclick="triggerHaptic(); switchTab('calendar');" aria-label="Volver">←</button>
+                <div class="day-title">
+                    <div class="weekday" id="selected-weekday">Día</div>
+                    <div class="datestr" id="selected-date-title">--</div>
+                </div>
+            </div>
+
+            <div class="card card-event">
+                <div class="card-title title-event">🔵 Nuevo Evento / Alarma</div>
+                
+                <div class="form-group">
+                    <label>Título / Asunto del Evento</label>
+                    <input type="text" id="eventTitle" placeholder="Ej. Evento importante...">
+                </div>
+
+                <div class="form-group">
+                    <label>Escribir Evento / Detalles (Opcional)</label>
+                    <textarea id="eventDesc" placeholder="Escribe aquí las aclaraciones..." style="min-height: 80px;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Hora de Alerta (Opcional)</label>
+                    <input type="time" id="eventTime">
+                </div>
+
+                <div class="form-group">
+                    <label>Prioridad</label>
+                    <div class="priority-chips" id="priority-chips">
+                        <div class="priority-chip chip-low selected" data-value="low" onclick="triggerHaptic(); selectPriority(this);">Baja</div>
+                        <div class="priority-chip chip-medium" data-value="medium" onclick="triggerHaptic(); selectPriority(this);">Media</div>
+                        <div class="priority-chip chip-high" data-value="high" onclick="triggerHaptic(); selectPriority(this);">Alta</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-event" style="margin-top: 10px;" onclick="triggerHaptic(); saveEventFromCalModal();">Guardar Evento</button>
+            </div>
+        </div>
+
+        <!-- PANTALLA SECUNDARIA: AJUSTES -->
+        <div id="screen-settings" class="screen">
+            <div class="day-header">
+                <button class="icon-btn" onclick="triggerHaptic(); switchTab('calendar');" aria-label="Volver">←</button>
+                <div class="day-title"><div class="datestr">Ajustes & Configuración</div></div>
+            </div>
+
+            <div class="settings-section card">
+                <div class="card-title title-task">👤 Perfil De Uso</div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;" id="settings-profile-label">Perfil Actual: General</div>
+                        <div style="font-size:0.72rem; color:var(--text-muted);">Cambia los ejemplos y sugerencias</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); openWelcomeScreen();">Cambiar</button>
+                </div>
+            </div>
+
+            <div class="settings-section card">
+                <div class="card-title title-note">🎨 Colores Del Tema</div>
+                <div class="theme-selector-grid">
+                    <div class="theme-card-btn active" data-theme="cafe" onclick="triggerHaptic(); setTheme('cafe', this);">
+                        <div class="theme-color-preview" style="background:#2b1810; border-color:#df9a57;"></div>
+                        <span class="theme-card-label">Café</span>
+                    </div>
+                    <div class="theme-card-btn" data-theme="gris" onclick="triggerHaptic(); setTheme('gris', this);">
+                        <div class="theme-color-preview" style="background:#1a1a1a; border-color:#909090;"></div>
+                        <span class="theme-card-label">Gris</span>
+                    </div>
+                    <div class="theme-card-btn" data-theme="marino" onclick="triggerHaptic(); setTheme('marino', this);">
+                        <div class="theme-color-preview" style="background:#0f172a; border-color:#38bdf8;"></div>
+                        <span class="theme-card-label">Marino</span>
+                    </div>
+                    <div class="theme-card-btn" data-theme="cream" onclick="triggerHaptic(); setTheme('cream', this);">
+                        <div class="theme-color-preview" style="background:#f4efea; border-color:#d97724;"></div>
+                        <span class="theme-card-label">Cream</span>
+                    </div>
+                    <div class="theme-card-btn" data-theme="menta" onclick="triggerHaptic(); setTheme('menta', this);">
+                        <div class="theme-color-preview" style="background:#e8f5e9; border-color:#2e7d32;"></div>
+                        <span class="theme-card-label">Menta</span>
+                    </div>
+                    <div class="theme-card-btn" data-theme="cielo" onclick="triggerHaptic(); setTheme('cielo', this);">
+                        <div class="theme-color-preview" style="background:#e0f2fe; border-color:#0284c7;"></div>
+                        <span class="theme-card-label">Cielo</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section card">
+                <div class="card-title title-event">📍 Lugares Frecuentes Guardados</div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;" id="lbl-setting-cochera">Mi Base / Central</div>
+                        <div id="cochera-status" style="font-size:0.72rem; color:var(--text-muted);">Sin guardar</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); openMapPicker('central');">Mapa</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;">Mi Casa</div>
+                        <div id="casa-status" style="font-size:0.72rem; color:var(--text-muted);">Sin guardar</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); openMapPicker('casa');">Mapa</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;" id="lbl-setting-punto-a">Mi Punto A (Personalizado)</div>
+                        <div id="punto-a-status" style="font-size:0.72rem; color:var(--text-muted);">Sin guardar</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); openMapPicker('punto_a');">Mapa</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;" id="lbl-setting-punto-b">Mi Punto B (Personalizado)</div>
+                        <div id="punto-b-status" style="font-size:0.72rem; color:var(--text-muted);">Sin guardar</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); openMapPicker('punto_b');">Mapa</button>
+                </div>
+            </div>
+
+            <div class="settings-section card">
+                <div class="card-title title-task">🔔 Sonidos & Avisos</div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;">Tono de Alarma</div>
+                    </div>
+                    <select id="sound-type-select" style="width: 140px; padding: 6px;" onchange="updateSoundType(this.value)">
+                        <option value="classic">Pitido Clásico</option>
+                        <option value="harmonic">Tono Armónico</option>
+                        <option value="double">Doble Pulso</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;">Probar Sonido Ahora</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="triggerHaptic(); playAlertSound();">🔊 Probar Tono</button>
+                </div>
+                <div class="settings-row">
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem;">Firebase Push & Permisos</div>
+                        <div id="notif-status" style="font-size:0.72rem; color:var(--text-muted);">Comprobando…</div>
+                    </div>
+                    <button class="btn btn-primary btn-small" id="btn-activate-notif" onclick="triggerHaptic(); requestPermissions();">Activar</button>
+                </div>
+            </div>
+
+            <!-- EMBLEMA OFICIAL MB -->
+            <div style="text-align: center; padding: 16px 0 6px 0; opacity: 0.9;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="60" height="60">
+                  <defs>
+                    <linearGradient id="mbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="var(--accent, #e5934a)" />
+                      <stop offset="100%" stop-color="var(--text-main, #ffffff)" stop-opacity="0.8" />
+                    </linearGradient>
+                  </defs>
+                  <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" fill="none" stroke="url(#mbGrad)" stroke-width="8" stroke-linejoin="round"/>
+                  <path d="M 52,145 V 55 L 82,105 L 112,55 V 145 M 112,55 H 145 C 160,55 160,90 145,90 H 112 H 148 C 165,90 165,145 148,145 H 112" fill="none" stroke="url(#mbGrad)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="100" y="172" font-family="-apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="2" fill="var(--text-muted, #b8a398)" text-anchor="middle" opacity="0.85">medbasha</text>
+                </svg>
+                <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; font-weight: 600;">Garantía de Confianza y Seguridad</div>
+            </div>
+
+            <div class="version-tag" id="version-tag"></div>
+        </div>
+
+        <!-- BOTÓN FLOTANTE (+) -->
+        <button class="fab-btn" id="fab-main-btn" onclick="triggerHaptic(); handleFabClick();">+</button>
+
+        <!-- BARRA INFERIOR DE NAVEGACIÓN -->
+        <div class="bottom-nav">
+            <button class="nav-item active" id="nav-calendar" onclick="triggerHaptic(); switchTab('calendar');">
+                <span class="nav-icon">📅</span>
+                <span>Calendario</span>
+            </button>
+            <button class="nav-item" id="nav-tasks" onclick="triggerHaptic(); switchTab('tasks');">
+                <span class="nav-icon">🟢</span>
+                <span>Tareas</span>
+            </button>
+            <button class="nav-item" id="nav-notes" onclick="triggerHaptic(); switchTab('notes');">
+                <span class="nav-icon">🟠</span>
+                <span>Notas</span>
+            </button>
+            <button class="nav-item" id="nav-summary" onclick="triggerHaptic(); switchTab('summary');">
+                <span class="nav-icon">📊</span>
+                <span>Resumen</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- MODAL MAPA VISUAL INTERACTIVO -->
+    <div id="map-modal">
+        <div style="color:white; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; text-align: center;">
+            Toca en el mapa para fijar la ubicación:
+        </div>
+        <div id="map-container-box">
+            <div id="map"></div>
+            <button class="map-gps-btn" onclick="triggerHaptic(); centerMapOnUserGPS();">🎯 Mi Ubicación GPS</button>
+        </div>
+        <div style="display: flex; gap: 10px; width: 100%; max-width: 440px;">
+            <button class="btn btn-primary" onclick="triggerHaptic(); confirmMapLocation();">Confirmar esta Ubicación</button>
+            <button class="btn btn-secondary" onclick="triggerHaptic(); closeMapPicker();">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL OVERLAY TUTORIAL INTERACTIVO -->
+    <div id="tutorial-modal">
+        <div class="tutorial-card">
+            <div class="tutorial-step-icon" id="tut-icon">🎭</div>
+            <div class="tutorial-step-title" id="tut-title">Perfil Adaptativo</div>
+            <div class="tutorial-step-desc" id="tut-desc">
+                Adapta el lenguaje, ejemplos y lugares según seas Estudiante, Médico, Comerciante, Transportista o Personal.
+            </div>
+            <div class="tutorial-nav">
+                <button class="btn btn-secondary btn-small" onclick="triggerHaptic(); moveTutorialStep(-1);" id="tut-prev-btn">Anterior</button>
+                <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);" id="tut-counter">1 / 4</span>
+                <button class="btn btn-primary btn-small" onclick="triggerHaptic(); moveTutorialStep(1);" id="tut-next-btn">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // medbasha
+        const config = { version: '3.4.2', sysSignature: 'medbasha' };
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7b6_T0ze2HgXiYHfvUeL12JSXE7ZKogc",
+            authDomain: "misturnos-fe3ea.firebaseapp.com",
+            databaseURL: "https://misturnos-fe3ea-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "misturnos-fe3ea",
+            storageBucket: "misturnos-fe3ea.firebasestorage.app",
+            messagingSenderId: "1029095925443",
+            appId: "1:1029095925443:web:873240d85ac5160f392476"
+        };
+        const vapidKey = "BGClAqG08mtup_uhnNeCjWeJdZfLU-pnmrEpfXbkKf6uVTRjAAdu-4PO1ASiuA-UOvyXvBiswDxpauthHiGw37I";
+
+        firebase.initializeApp(firebaseConfig);
+        const fbDB = firebase.database();
+        const fbMessaging = ('serviceWorker' in navigator && firebase.messaging.isSupported()) ? firebase.messaging() : null;
+
+        const db = new Dexie('TaskMasterDB');
+        db.version(1).stores({
+            events: 'id, date, priority, loc, alarmFired, notified',
+            todos: '++id, dateKey, done, category',
+            notes: 'dateKey',
+            settings: 'key',
+            locations: 'key'
+        });
+
+        const profilePresets = {
+            student: {
+                name: 'Estudiante',
+                taskPlaceholder: 'Ej. Examen de Matemáticas / Entrega de trabajo',
+                eventPlaceholder: 'Ej. Clase magistral / Entrega de proyecto',
+                notesPlaceholder: 'Anotaciones de clase, biblioteca o campus...',
+                locCentral: 'Campus / Universidad',
+                locPuntoA: '📍 Biblioteca Central',
+                locPuntoB: '📍 Sala de Estudio'
+            },
+            health: {
+                name: 'Salud / Médico',
+                taskPlaceholder: 'Ej. Pasar consulta / Revisar analíticas',
+                eventPlaceholder: 'Ej. Guardia médica / Intervención',
+                notesPlaceholder: 'Notas de pacientes, turnos de guardia o reuniones...',
+                locCentral: 'Hospital / Centro Médico',
+                locPuntoA: '📍 Planta de Consultas',
+                locPuntoB: '📍 Quirófano / Servicio'
+            },
+            store: {
+                name: 'Comercio / Tienda',
+                taskPlaceholder: 'Ej. Pedido a proveedor / Recuento de caja',
+                eventPlaceholder: 'Ej. Recepción de mercancía / Inventario',
+                notesPlaceholder: 'Notas de stock, pedidos pendientes o caja...',
+                locCentral: 'Mi Tienda / Local',
+                locPuntoA: '📍 Almacén Principal',
+                locPuntoB: '📍 Proveedor Habitual'
+            },
+            transport: {
+                name: 'Transporte / Logística',
+                taskPlaceholder: 'Ej. Inspección de autobús / Revisión de niveles',
+                eventPlaceholder: 'Ej. Salida de ruta L01 / Pasar ITV',
+                notesPlaceholder: 'Notas de jornada, vehículo o carretera...',
+                locCentral: 'Mi Cochera / Central',
+                locPuntoA: '📍 Parada Relevo A',
+                locPuntoB: '📍 Parada Relevo B'
+            },
+            general: {
+                name: 'General / Personal',
+                taskPlaceholder: 'Ej. Cita personal / Hacer compras',
+                eventPlaceholder: 'Ej. Cita médico / Factura luz',
+                notesPlaceholder: 'Notas y anotaciones personales...',
+                locCentral: 'Mi Trabajo',
+                locPuntoA: '📍 Mi Punto A (Frecuente)',
+                locPuntoB: '📍 Mi Punto B (Frecuente)'
+            }
+        };
+
+        const tutorialSteps = [
+            { icon: '🎭', title: 'Perfil Adaptativo', desc: 'Personaliza los ejemplos, recordatorios y nombres de lugares según tu ocupación (Estudiante, Médico, Comerciante, Transporte o General).' },
+            { icon: '💻📱', title: 'Avisos Multi-Dispositivo', desc: 'Programa tareas o eventos desde tu ordenador/portátil y recibirás las alarmas Push en tu móvil y tablet aunque la pantalla esté apagada.' },
+            { icon: '🎙️✨', title: 'Herramientas de IA', desc: 'Dicta tus notas por voz, aplica formato limpio automático con IA, tacha líneas completadas y convierte cualquier nota rápida en una alarma.' },
+            { icon: '📍🗺️', title: 'Geofencing Inteligente', desc: 'Guarda tus ubicaciones frecuentes para recibir alertas en pantalla cuando te aproximes a tu trabajo, campus o punto asignado.' }
+        ];
+        let currentTutorialIndex = 0;
+
+        let currentProfileKey = 'general';
+        let activeCategoryFilter = 'all';
+        let isRecordingSpeech = false;
+        let speechRecognition = null;
+
+        function triggerHaptic() {
+            if (navigator.vibrate) {
+                navigator.vibrate([25, 15, 25]);
+            }
+        }
+
+        async function enableStoragePersistence() {
+            if (navigator.storage && navigator.storage.persist) {
+                await navigator.storage.persist();
+            }
+        }
+
+        const todayDate = new Date();
+        let currentYear = todayDate.getFullYear();
+        let currentMonth = todayDate.getMonth();
+        let currentActiveTab = 'calendar';
+        
+        const getFormattedDateKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        let selectedDateStr = getFormattedDateKey(todayDate);
+        let selectedPriority = 'low';
+
+        let globalAudioCtx = null;
+        let leafletMap = null;
+        let mapMarker = null;
+        let activeTargetType = null; 
+        let tempCoords = { lat: 39.9996, lon: 3.8349 };
+        let pendingEventCustomCoords = null; 
+        let swRegistration = null;
+
+        const geofenceZones = {
+            gasolinera: [
+                { name: 'Repsol Ciutadella', lat: 40.0012, lon: 3.8411 },
+                { name: 'Cepsa Centro', lat: 39.9055, lon: 4.2410 }
+            ],
+            super: [
+                { name: 'Mercadona Ciutadella', lat: 40.0057, lon: 3.8546 },
+                { name: 'Eroski', lat: 40.0021, lon: 3.8423 },
+                { name: 'Lidl', lat: 39.9985, lon: 3.8499 }
+            ]
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await enableStoragePersistence();
+
+            const savedThemeRec = await db.settings.get('app_theme');
+            const savedTheme = savedThemeRec ? savedThemeRec.value : 'cafe';
+            applyThemeUI(savedTheme);
+
+            const savedProfileRec = await db.settings.get('user_profile');
+            if (savedProfileRec) {
+                currentProfileKey = savedProfileRec.value;
+                applyProfileUI(currentProfileKey);
+            } else {
+                openWelcomeScreen();
+            }
+
+            const soundRec = await db.settings.get('sound_type');
+            if (soundRec) {
+                document.getElementById('sound-type-select').value = soundRec.value;
+            }
+
+            registerServiceWorker();
+            await initCalendar();
+            renderWeekBar();
+            initSmartTracking();
+            initTimeAlarms();
+            await updateLocationUI();
+            updatePermissionBanner();
+            await loadTabData();
+            document.getElementById('version-tag').innerText = 'TaskMaster Calendar Pro_v ' + config.version;
+        });
+
+        function applyProfileUI(profileKey) {
+            const p = profilePresets[profileKey] || profilePresets.general;
+            currentProfileKey = profileKey;
+
+            document.getElementById('taskInputText').placeholder = p.taskPlaceholder;
+            document.getElementById('eventTitle').placeholder = p.eventPlaceholder;
+            document.getElementById('tab-day-notes').placeholder = p.notesPlaceholder;
+
+            document.getElementById('opt-loc-central').innerText = p.locCentral;
+            document.getElementById('opt-loc-punto-a').innerText = p.locPuntoA;
+            document.getElementById('opt-loc-punto-b').innerText = p.locPuntoB;
+
+            document.getElementById('lbl-setting-cochera').innerText = p.locCentral;
+            document.getElementById('lbl-setting-punto-a').innerText = p.locPuntoA;
+            document.getElementById('lbl-setting-punto-b').innerText = p.locPuntoB;
+
+            document.getElementById('summary-profile-name').innerText = p.name;
+            document.getElementById('settings-profile-label').innerText = 'Perfil Actual: ' + p.name;
+        }
+
+        async function selectUserProfile(profileKey) {
+            triggerHaptic();
+            await db.settings.put({ key: 'user_profile', value: profileKey });
+            applyProfileUI(profileKey);
+            switchTab('calendar');
+        }
+
+        function openWelcomeScreen() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-welcome').classList.add('active');
+            document.getElementById('fab-main-btn').style.display = 'none';
+        }
+
+        function openTutorialModal(stepIndex) {
+            currentTutorialIndex = stepIndex;
+            renderTutorialStep();
+            document.getElementById('tutorial-modal').style.display = 'flex';
+        }
+
+        function renderTutorialStep() {
+            const step = tutorialSteps[currentTutorialIndex];
+            document.getElementById('tut-icon').innerText = step.icon;
+            document.getElementById('tut-title').innerText = step.title;
+            document.getElementById('tut-desc').innerText = step.desc;
+            document.getElementById('tut-counter').innerText = `${currentTutorialIndex + 1} / ${tutorialSteps.length}`;
+            document.getElementById('tut-prev-btn').style.visibility = (currentTutorialIndex === 0) ? 'hidden' : 'visible';
+            document.getElementById('tut-next-btn').innerText = (currentTutorialIndex === tutorialSteps.length - 1) ? 'Entendido ✓' : 'Siguiente';
+        }
+
+        function moveTutorialStep(dir) {
+            currentTutorialIndex += dir;
+            if (currentTutorialIndex >= tutorialSteps.length) {
+                document.getElementById('tutorial-modal').style.display = 'none';
+                currentTutorialIndex = 0;
+            } else if (currentTutorialIndex < 0) {
+                currentTutorialIndex = 0;
+            } else {
+                renderTutorialStep();
+            }
+        }
+
+        function unlockAudioContext() {
+            if (!globalAudioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                globalAudioCtx = new AudioContext();
+            }
+            if (globalAudioCtx.state === 'suspended') {
+                globalAudioCtx.resume();
+            }
+        }
+
+        function applyThemeUI(themeName) {
+            document.body.className = 'theme-' + themeName;
+            document.querySelectorAll('.theme-card-btn').forEach(btn => {
+                if (btn.dataset.theme === themeName) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        async function switchTab(tabName) {
+            currentActiveTab = tabName;
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            document.getElementById('tab-' + tabName).classList.add('active');
+            document.getElementById('nav-' + tabName).classList.add('active');
+
+            const fab = document.getElementById('fab-main-btn');
+            fab.style.display = (tabName === 'summary') ? 'none' : 'flex';
+
+            await loadTabData();
+        }
+
+        function openSettingsScreen() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-settings').classList.add('active');
+            document.getElementById('fab-main-btn').style.display = 'none';
+        }
+
+        function handleFabClick() {
+            if (currentActiveTab === 'tasks') {
+                const card = document.getElementById('new-task-form-card');
+                card.style.display = (card.style.display === 'none' || !card.style.display) ? 'block' : 'none';
+            } else if (currentActiveTab === 'calendar') {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('screen-day-modal').classList.add('active');
+            } else if (currentActiveTab === 'notes') {
+                document.getElementById('tab-day-notes').focus();
+            }
+        }
+
+        async function loadTabData() {
+            const noteRecord = await db.notes.get(selectedDateStr);
+            document.getElementById('tab-day-notes').value = (noteRecord && noteRecord.text) ? noteRecord.text : '';
+            document.getElementById('notes-date-label').innerText = selectedDateStr;
+
+            await renderDayTasksList();
+            await updateSummaryData();
+            await renderCalSelectedEvents();
+        }
+
+        /* --- HERRAMIENTAS DE NOTAS --- */
+        function toggleStrikethroughNote() {
+            const area = document.getElementById('tab-day-notes');
+            const start = area.selectionStart;
+            const end = area.selectionEnd;
+            const text = area.value;
+
+            if (start === end) {
+                return alert("Selecciona con el dedo o el ratón el texto que quieres tachar.");
+            }
+
+            const selectedText = text.substring(start, end);
+            const isTached = selectedText.startsWith('~') && selectedText.endsWith('~');
+            const newText = isTached ? selectedText.slice(1, -1) : `~${selectedText}~`;
+
+            area.value = text.substring(0, start) + newText + text.substring(end);
+            saveTabNotes();
+        }
+
+        async function clearTabNotes() {
+            if (confirm("¿Quieres borrar toda la nota de este día?")) {
+                document.getElementById('tab-day-notes').value = '';
+                await db.notes.delete(selectedDateStr);
+                await initCalendar();
+            }
+        }
+
+        /* --- FUNCIONALIDADES DE MEJORA --- */
+        function filterTaskCategory(cat, el) {
+            triggerHaptic();
+            activeCategoryFilter = cat;
+            document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            renderDayTasksList();
+        }
+
+        async function updateTaskProgress() {
+            const list = await db.todos.where('dateKey').equals(selectedDateStr).toArray();
+            const total = list.length;
+            const completed = list.filter(t => t.done).length;
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            document.getElementById('progress-percent-txt').innerText = percent + '%';
+            document.getElementById('progress-bar-fill').style.width = percent + '%';
+        }
+
+        async function loadPresetTemplate(type) {
+            const p = profilePresets[currentProfileKey] || profilePresets.general;
+            let items = [];
+            if (currentProfileKey === 'transport') {
+                items = ['Revisar niveles y neumáticos', 'Comprobar itinerario de ruta', 'Inspección de limpieza interna'];
+            } else if (currentProfileKey === 'student') {
+                items = ['Repasar apuntes del tema anterior', 'Organizar entregas de la semana', 'Revisar lecturas en biblioteca'];
+            } else if (currentProfileKey === 'health') {
+                items = ['Revisar parte de guardia', 'Verificar historial de pacientes', 'Comprobar stock de material'];
+            } else if (currentProfileKey === 'store') {
+                items = ['Apertura y recuento de caja', 'Verificar pedidos a proveedores', 'Revisar reposición de stock'];
+            } else {
+                items = ['Revisar agenda del día', 'Hacer compras pendientes', 'Organizar tareas personales'];
+            }
+
+            for (let text of items) {
+                await db.todos.add({ dateKey: selectedDateStr, text, done: false, category: 'trabajo', loc: 'none', time: '' });
+            }
+            await renderDayTasksList();
+            alert("✓ Plantilla cargada para el día actual.");
+        }
+
+        async function shareDaySummary() {
+            const tasksList = await db.todos.where('dateKey').equals(selectedDateStr).toArray();
+            const eventsList = await db.events.where('date').equals(selectedDateStr).toArray();
+            const noteRecord = await db.notes.get(selectedDateStr);
+
+            let msg = `📅 *RESUMEN DE JORNADA (${selectedDateStr})*\n\n`;
+            
+            if (eventsList.length > 0) {
+                msg += `🔵 *Eventos:*\n`;
+                eventsList.forEach(e => msg += `• ${e.time} - ${e.title}\n`);
+                msg += `\n`;
+            }
+
+            if (tasksList.length > 0) {
+                msg += `🟢 *Tareas:*\n`;
+                tasksList.forEach(t => msg += `${t.done ? '✅' : '⏳'} ${t.text}\n`);
+                msg += `\n`;
+            }
+
+            if (noteRecord && noteRecord.text.trim()) {
+                msg += `🟠 *Notas:*\n${noteRecord.text}\n`;
+            }
+
+            if (navigator.share) {
+                navigator.share({ title: 'Resumen TaskMaster', text: msg });
+            } else {
+                navigator.clipboard.writeText(msg);
+                alert("✓ Resumen copiado al portapapeles. ¡Listo para pegar en WhatsApp!");
+            }
+        }
+
+        async function handleGlobalSearch(query) {
+            const box = document.getElementById('search-results-box');
+            const listContainer = document.getElementById('search-results-list');
+            
+            if (!query || query.trim().length < 2) {
+                box.style.display = 'none';
+                return;
+            }
+
+            const q = query.toLowerCase().trim();
+            const allTasks = await db.todos.toArray();
+            const allEvents = await db.events.toArray();
+            const allNotes = await db.notes.toArray();
+
+            const matchedTasks = allTasks.filter(t => t.text.toLowerCase().includes(q));
+            const matchedEvents = allEvents.filter(e => e.title.toLowerCase().includes(q) || (e.details && e.details.toLowerCase().includes(q)));
+            const matchedNotes = allNotes.filter(n => n.text.toLowerCase().includes(q));
+
+            listContainer.innerHTML = '';
+            let total = 0;
+
+            matchedTasks.forEach(t => {
+                total++;
+                listContainer.innerHTML += `<div class="event-card"><div class="event-info"><div class="event-time">🟢 Tarea (${t.dateKey})</div><div class="event-title-txt">${t.text}</div></div></div>`;
+            });
+
+            matchedEvents.forEach(e => {
+                total++;
+                listContainer.innerHTML += `<div class="event-card"><div class="event-info"><div class="event-time">🔵 Evento (${e.date})</div><div class="event-title-txt">${e.title}</div></div></div>`;
+            });
+
+            matchedNotes.forEach(n => {
+                total++;
+                listContainer.innerHTML += `<div class="event-card"><div class="event-info"><div class="event-time">🟠 Nota (${n.dateKey})</div><div class="event-title-txt">${n.text.substring(0, 45)}...</div></div></div>`;
+            });
+
+            if (total === 0) {
+                listContainer.innerHTML = '<div class="empty-hint">No se encontraron coincidencias.</div>';
+            }
+
+            box.style.display = 'block';
+        }
+
+        /* --- ASISTENTE IA Y VOZ --- */
+        function toggleDictation() {
+            const btn = document.getElementById('btn-dictate-notes');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                return alert("El reconocimiento por voz no está soportado en este navegador.");
+            }
+
+            if (isRecordingSpeech) {
+                if (speechRecognition) speechRecognition.stop();
+                isRecordingSpeech = false;
+                btn.classList.remove('recording');
+                btn.innerText = '🎙️ Dictar';
+            } else {
+                speechRecognition = new SpeechRecognition();
+                speechRecognition.lang = 'es-ES';
+                speechRecognition.continuous = true;
+                speechRecognition.interimResults = false;
+
+                speechRecognition.onstart = () => {
+                    isRecordingSpeech = true;
+                    btn.classList.add('recording');
+                    btn.innerText = '🔴 Escuchando...';
+                };
+
+                speechRecognition.onresult = (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript;
+                    const area = document.getElementById('tab-day-notes');
+                    area.value += (area.value ? '\n' : '') + transcript;
+                    saveTabNotes();
+                };
+
+                speechRecognition.onerror = () => {
+                    isRecordingSpeech = false;
+                    btn.classList.remove('recording');
+                    btn.innerText = '🎙️ Dictar';
+                };
+
+                speechRecognition.onend = () => {
+                    isRecordingSpeech = false;
+                    btn.classList.remove('recording');
+                    btn.innerText = '🎙️ Dictar';
+                };
+
+                speechRecognition.start();
+            }
+        }
+
+        function formatNotesWithIA() {
+            const area = document.getElementById('tab-day-notes');
+            let txt = area.value.trim();
+            if (!txt) return alert("Escribe o dicta algo primero en las notas.");
+
+            const lines = txt.split('\n').filter(l => l.trim() !== '');
+            const formatted = lines.map(line => '• ' + line.replace(/^[\s•\-*]+/, '')).join('\n');
+            area.value = `📝 NOTAS ESTRUCTURADAS:\n${formatted}`;
+            saveTabNotes();
+        }
+
+        async function convertNoteToAlarm() {
+            const area = document.getElementById('tab-day-notes');
+            let txt = area.value.trim();
+            if (!txt) return alert("Escribe primero la nota que quieres convertir en alarma.");
+
+            const timeStr = prompt("Introduce la hora de la alarma (Ejemplo: 14:30):", "09:00");
+            if (!timeStr) return;
+
+            const eventId = 'ev_' + Date.now();
+            const eventData = {
+                id: eventId,
+                date: selectedDateStr,
+                title: '📌 Alarma Nota: ' + txt.substring(0, 25),
+                details: txt,
+                time: timeStr,
+                priority: 'medium',
+                loc: 'none',
+                notified: false,
+                alarmFired: false
+            };
+
+            await db.events.put(eventData);
+            syncEventWithFirebase(eventData);
+            await initCalendar();
+            alert("✓ Nota convertida en Alerta. Se enviará a tus móviles y tablets vía Firebase FCM.");
+        }
+
+        function renderWeekBar() {
+            const container = document.getElementById('week-bar');
+            container.innerHTML = '';
+            
+            const curr = new Date();
+            const first = curr.getDate() - curr.getDay() + 1;
+            const dayNames = ['L','M','X','J','V','S','D'];
+
+            for (let i = 0; i < 7; i++) {
+                const nextDay = new Date(curr.setDate(first + i));
+                const dateKey = getFormattedDateKey(nextDay);
+                const dayNum = nextDay.getDate();
+
+                const chip = document.createElement('div');
+                chip.className = `week-day-chip ${dateKey === selectedDateStr ? 'active' : ''}`;
+                if (dateKey === getFormattedDateKey(todayDate)) chip.classList.add('today-highlight');
+
+                chip.innerHTML = `
+                    <span class="day-name">${dayNames[i]}</span>
+                    <span class="day-num">${dayNum}</span>
+                `;
+                chip.onclick = async () => {
+                    triggerHaptic();
+                    selectedDateStr = dateKey;
+                    renderWeekBar();
+                    await loadTabData();
+                };
+                container.appendChild(chip);
+            }
+        }
+
+        async function saveTaskFromForm() {
+            const txt = document.getElementById('taskInputText').value;
+            const category = document.getElementById('taskCategorySelect').value;
+            const subtasksRaw = document.getElementById('taskSubtasksInput').value;
+            const repeat = document.getElementById('taskRepeatSelect').value;
+            const loc = document.getElementById('taskLocSelect').value;
+            const time = document.getElementById('taskTimeInput').value;
+
+            if (!txt) return alert("Escribe el nombre de la tarea.");
+
+            const subtasks = subtasksRaw ? subtasksRaw.split(',').map(s => ({ text: s.trim(), done: false })).filter(s => s.text !== '') : [];
+
+            await db.todos.add({ 
+                dateKey: selectedDateStr, 
+                text: txt, 
+                done: false, 
+                category, 
+                subtasks, 
+                repeat, 
+                loc, 
+                time 
+            });
+
+            if (loc !== 'none' || time) {
+                const eventId = 'ev_' + Date.now();
+                const eventData = {
+                    id: eventId,
+                    date: selectedDateStr,
+                    title: txt, details: '', time: time || '--:--', priority: 'low', loc,
+                    customCoords: pendingEventCustomCoords,
+                    notified: false, alarmFired: false
+                };
+                await db.events.put(eventData);
+
+                if (time) {
+                    syncEventWithFirebase(eventData);
+                }
+                await initCalendar();
+            }
+
+            document.getElementById('taskInputText').value = '';
+            document.getElementById('taskSubtasksInput').value = '';
+            document.getElementById('new-task-form-card').style.display = 'none';
+            pendingEventCustomCoords = null;
+            await renderDayTasksList();
+        }
+
+        async function renderDayTasksList() {
+            const container = document.getElementById('tasks-day-list');
+            container.innerHTML = '';
+            let list = await db.todos.where('dateKey').equals(selectedDateStr).toArray();
+
+            if (activeCategoryFilter !== 'all') {
+                list = list.filter(t => t.category === activeCategoryFilter);
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-hint">No hay tareas anotadas para este filtro o día. Toca (+) para añadir una.</div>';
+                await updateTaskProgress();
+                return;
+            }
+
+            list.forEach((todo) => {
+                const div = document.createElement('div');
+                div.className = `todo-item ${todo.done ? 'done' : ''}`;
+                
+                let subtasksHtml = '';
+                if (todo.subtasks && todo.subtasks.length > 0) {
+                    subtasksHtml = '<div class="subtasks-container">';
+                    todo.subtasks.forEach((st, idx) => {
+                        subtasksHtml += `
+                            <div class="subtask-item ${st.done ? 'done' : ''}">
+                                <input type="checkbox" ${st.done ? 'checked' : ''} onchange="triggerHaptic(); toggleSubtask(${todo.id}, ${idx});">
+                                <span>${st.text}</span>
+                            </div>
+                        `;
+                    });
+                    subtasksHtml += '</div>';
+                }
+
+                div.innerHTML = `
+                    <div class="todo-main-row">
+                        <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="triggerHaptic(); toggleDayTodo(${todo.id}, ${todo.done});">
+                        <span class="todo-text-span" style="flex:1;">${todo.text}</span>
+                        <button class="btn-reminder" onclick="triggerHaptic(); showTaskReminderPrompt('${todo.text}', '${todo.time || ''}');">🔔 Recordar</button>
+                        <button class="event-del" onclick="triggerHaptic(); deleteDayTodo(${todo.id});">✕</button>
+                    </div>
+                    ${subtasksHtml}
+                `;
+                container.appendChild(div);
+            });
+            await updateTaskProgress();
+        }
+
+        async function toggleSubtask(todoId, subtaskIdx) {
+            const todo = await db.todos.get(todoId);
+            if (todo && todo.subtasks) {
+                todo.subtasks[subtaskIdx].done = !todo.subtasks[subtaskIdx].done;
+                await db.todos.update(todoId, { subtasks: todo.subtasks });
+                await renderDayTasksList();
+            }
+        }
+
+        function showTaskReminderPrompt(title, time) {
+            alert(`🔔 Recordatorio activo para: "${title}"\n${time ? 'Hora programada: ' + time : 'Pendiente para la fecha actual.'}`);
+        }
+
+        async function toggleDayTodo(id, currentDone) {
+            const todo = await db.todos.get(id);
+            const newDoneState = !currentDone;
+            await db.todos.update(id, { done: newDoneState });
+
+            if (newDoneState && todo && todo.repeat && todo.repeat !== 'none') {
+                const nextDate = new Date(todo.dateKey);
+                if (todo.repeat === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+                else if (todo.repeat === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+                else if (todo.repeat === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+
+                const nextDateKey = getFormattedDateKey(nextDate);
+                await db.todos.add({
+                    dateKey: nextDateKey,
+                    text: todo.text,
+                    done: false,
+                    category: todo.category,
+                    subtasks: todo.subtasks ? todo.subtasks.map(s => ({ ...s, done: false })) : [],
+                    repeat: todo.repeat,
+                    loc: todo.loc,
+                    time: todo.time
+                });
+            }
+
+            await renderDayTasksList();
+        }
+
+        async function deleteDayTodo(id) {
+            await db.todos.delete(id);
+            await renderDayTasksList();
+            await initCalendar();
+        }
+
+        async function saveTabNotes() {
+            const txt = document.getElementById('tab-day-notes').value;
+            if (!txt || txt.trim() === '') {
+                await db.notes.delete(selectedDateStr);
+            } else {
+                await db.notes.put({ dateKey: selectedDateStr, text: txt });
+            }
+            await initCalendar();
+        }
+
+        async function updateSummaryData() {
+            const todayKey = getFormattedDateKey(todayDate);
+            const pendingTasks = await db.todos.where('dateKey').equals(todayKey).filter(t => !t.done).count();
+            const completedTasks = await db.todos.where('dateKey').equals(todayKey).filter(t => t.done).count();
+            const todayEvents = await db.events.where('date').equals(todayKey).count();
+            const locCentral = await db.locations.get('central');
+            const locCasa = await db.locations.get('casa');
+            const locPuntoA = await db.locations.get('punto_a');
+            const locPuntoB = await db.locations.get('punto_b');
+            const savedLocs = (locCentral ? 1 : 0) + (locCasa ? 1 : 0) + (locPuntoA ? 1 : 0) + (locPuntoB ? 1 : 0);
+
+            document.getElementById('summary-pending-count').innerText = pendingTasks;
+            document.getElementById('summary-events-count').innerText = todayEvents;
+            document.getElementById('summary-locs-count').innerText = savedLocs;
+
+            const iaSummaryBox = document.getElementById('ia-executive-summary-text');
+            if (pendingTasks === 0 && todayEvents === 0) {
+                iaSummaryBox.innerText = "💡 ¡Todo al día! No tienes tareas ni eventos pendientes para hoy.";
+            } else {
+                iaSummaryBox.innerText = `💡 Tienes ${pendingTasks} tareas pendientes y ${todayEvents} eventos hoy. Mantén el ritmo en tus objetivos.`;
+            }
+
+            drawModernBarChart(pendingTasks, completedTasks, todayEvents, savedLocs);
+        }
+
+        function drawModernBarChart(pending, completed, eventsCount, locs) {
+            const canvas = document.getElementById('summaryCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const categories = [
+                { label: 'Pendientes', value: pending, color: '#e54d42' },
+                { label: 'Hechas', value: completed, color: '#6bb05d' },
+                { label: 'Eventos', value: eventsCount, color: '#38bdf8' },
+                { label: 'GPS', value: locs, color: '#e5934a' }
+            ];
+
+            const maxValue = Math.max(...categories.map(c => c.value), 5);
+            const startY = 25;
+            const barHeight = 18;
+            const gap = 16;
+
+            categories.forEach((cat, index) => {
+                const y = startY + index * (barHeight + gap);
+                
+                ctx.fillStyle = 'rgba(128, 128, 128, 0.12)';
+                ctx.beginPath();
+                ctx.roundRect(80, y, 220, barHeight, 6);
+                ctx.fill();
+
+                const filledWidth = Math.max((cat.value / maxValue) * 220, 8);
+                ctx.fillStyle = cat.color;
+                ctx.beginPath();
+                ctx.roundRect(80, y, filledWidth, barHeight, 6);
+                ctx.fill();
+
+                ctx.fillStyle = 'var(--text-main)';
+                ctx.font = 'bold 11px -apple-system, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(cat.label, 72, y + 13);
+
+                ctx.textAlign = 'left';
+                ctx.fillText(cat.value, 86 + filledWidth, y + 13);
+            });
+        }
+
+        function handleLocSelectChange(val) {
+            if (val === 'custom_map') openMapPicker('event_custom');
+        }
+
+        function openMapPicker(type) {
+            activeTargetType = type;
+            document.getElementById('map-modal').style.display = 'flex';
+
+            if (!leafletMap) {
+                leafletMap = L.map('map').setView([tempCoords.lat, tempCoords.lon], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(leafletMap);
+                mapMarker = L.marker([tempCoords.lat, tempCoords.lon], { draggable: true }).addTo(leafletMap);
+
+                leafletMap.on('click', (e) => {
+                    tempCoords = { lat: e.latlng.lat, lon: e.latlng.lng };
+                    mapMarker.setLatLng(e.latlng);
+                });
+                mapMarker.on('dragend', () => {
+                    const pos = mapMarker.getLatLng();
+                    tempCoords = { lat: pos.lat, lon: pos.lng };
+                });
+            }
+            setTimeout(() => { leafletMap.invalidateSize(); centerMapOnUserGPS(); }, 250);
+        }
+
+        function centerMapOnUserGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    tempCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                    leafletMap.setView([tempCoords.lat, tempCoords.lon], 16);
+                    mapMarker.setLatLng([tempCoords.lat, tempCoords.lon]);
+                }, null, { enableHighAccuracy: true });
+            }
+        }
+
+        function closeMapPicker() { document.getElementById('map-modal').style.display = 'none'; }
+
+        async function confirmMapLocation() {
+            if (activeTargetType === 'event_custom') {
+                pendingEventCustomCoords = { lat: tempCoords.lat, lon: tempCoords.lon };
+                const statusDiv = document.getElementById('event-custom-coord-status');
+                statusDiv.innerText = `📍 Punto Fijado (${tempCoords.lat.toFixed(4)}, ${tempCoords.lon.toFixed(4)})`;
+                statusDiv.style.display = 'block';
+            } else if (activeTargetType) {
+                await db.locations.put({ key: activeTargetType, data: { lat: tempCoords.lat, lon: tempCoords.lon } });
+                await updateLocationUI();
+            }
+            closeMapPicker();
+        }
+
+        async function changeMonth(dir) {
+            currentMonth += dir;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            await initCalendar();
+        }
+
+        async function initCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            document.getElementById('calendar-month-year').innerText = `${months[currentMonth]} ${currentYear}`;
+
+            ['D','L','M','X','J','V','S'].forEach(n => {
+                const el = document.createElement('div');
+                el.className = 'calendar-day-name'; el.innerText = n;
+                grid.appendChild(el);
+            });
+
+            const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let x = 0; x < firstDayIndex; x++) {
+                grid.appendChild(Object.assign(document.createElement('div'), { className: 'calendar-cell empty' }));
+            }
+
+            const allEvents = await db.events.toArray();
+            const allNotes = await db.notes.toArray();
+
+            for (let i = 1; i <= totalDays; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell'; cell.innerText = i;
+                const dateKey = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+
+                if (dateKey === getFormattedDateKey(todayDate)) cell.classList.add('today');
+
+                const hasNote = allNotes.some(n => n.dateKey === dateKey && n.text && n.text.trim() !== '');
+                if (hasNote) {
+                    const noteDot = document.createElement('div');
+                    noteDot.className = 'note-dot-hint';
+                    cell.appendChild(noteDot);
+                }
+
+                const dayEvents = allEvents.filter(e => e.date === dateKey);
+                if (dayEvents.length > 0) {
+                    const barContainer = document.createElement('div');
+                    barContainer.className = 'indicator-bar-container';
+                    dayEvents.slice(0, 3).forEach(ev => {
+                        const bar = document.createElement('div');
+                        bar.className = 'ind-bar';
+                        bar.style.backgroundColor = `var(--color-${ev.priority})`;
+                        barContainer.appendChild(bar);
+                    });
+                    cell.appendChild(barContainer);
+                }
+
+                cell.onclick = async () => {
+                    triggerHaptic();
+                    selectedDateStr = dateKey;
+                    document.getElementById('cal-selected-date-label').innerText = dateKey;
+                    await renderCalSelectedEvents();
+                };
+                grid.appendChild(cell);
+            }
+        }
+
+        async function renderCalSelectedEvents() {
+            const container = document.getElementById('cal-selected-events-list');
+            container.innerHTML = '';
+            const dayEvents = await db.events.where('date').equals(selectedDateStr).toArray();
+
+            if (dayEvents.length === 0) {
+                container.innerHTML = '<div class="empty-hint">Sin eventos ni alertas para esta fecha.</div>';
+                return;
+            }
+
+            dayEvents.forEach(ev => {
+                const div = document.createElement('div');
+                div.className = 'event-card';
+                div.innerHTML = `
+                    <div class="event-dot" style="background:var(--color-${ev.priority});"></div>
+                    <div class="event-info">
+                        <div class="event-time">
+                            ${ev.time !== '--:--' ? ev.time : 'Solo Ubicación'}
+                            <button class="btn-reminder" onclick="triggerHaptic(); showTaskReminderPrompt('${ev.title}', '${ev.time}');">🔔 Recordar</button>
+                        </div>
+                        <div class="event-title-txt">${ev.title}</div>
+                        ${ev.details ? `<div class="event-desc-txt">${ev.details}</div>` : ''}
+                    </div>
+                    <button class="event-del" onclick="triggerHaptic(); deleteEvent('${ev.id}');">✕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function saveEventFromCalModal() {
+            const title = document.getElementById('eventTitle').value;
+            const details = document.getElementById('eventDesc').value;
+            const time = document.getElementById('eventTime').value;
+
+            if (!title) return alert("Rellena el título del evento.");
+
+            const eventId = 'ev_' + Date.now();
+            const eventData = {
+                id: eventId,
+                date: selectedDateStr,
+                title, details: details || '', time: time || '--:--', priority: selectedPriority, loc: 'none',
+                notified: false, alarmFired: false
+            };
+
+            await db.events.put(eventData);
+
+            if (time) {
+                syncEventWithFirebase(eventData);
+            }
+
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventDesc').value = '';
+            document.getElementById('eventTime').value = '';
+
+            await initCalendar();
+            await switchTab('calendar');
+        }
+
+        async function deleteEvent(id) {
+            await db.events.delete(id);
+            fbDB.ref('alarms/' + id).remove();
+            await initCalendar();
+            await renderCalSelectedEvents();
+        }
+
+        async function updateSoundType(val) {
+            await db.settings.put({ key: 'sound_type', value: val });
+        }
+
+        function selectPriority(el) {
+            document.querySelectorAll('.priority-chip').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected'); selectedPriority = el.dataset.value;
+        }
+
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').then(reg => { 
+                    swRegistration = reg;
+                    if (fbMessaging) {
+                        fbMessaging.useServiceWorker(reg);
+                    }
+                });
+            }
+        }
+
+        function updatePermissionBanner() {
+            const banner = document.getElementById('permission-banner');
+            const notifStatus = document.getElementById('notif-status');
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                banner.style.display = 'block';
+                if (notifStatus) notifStatus.innerText = 'Pendiente';
+            } else {
+                banner.style.display = 'none';
+                if (notifStatus) notifStatus.innerText = 'Activadas FCM ✓';
+            }
+        }
+
+        function requestPermissions() {
+            unlockAudioContext();
+            if ('Notification' in window) {
+                Notification.requestPermission().then((perm) => {
+                    updatePermissionBanner();
+                    if (perm === 'granted' && fbMessaging) {
+                        fbMessaging.getToken({ vapidKey }).then(token => {
+                            fbDB.ref('device_tokens/main_device').set(token);
+                        }).catch(err => console.error("Error FCM Token:", err));
+                    }
+                });
+            }
+            triggerHaptic();
+        }
+
+        async function updateLocationUI() {
+            const cocheraStatus = document.getElementById('cochera-status');
+            const casaStatus = document.getElementById('casa-status');
+            const puntoAStatus = document.getElementById('punto-a-status');
+            const puntoBStatus = document.getElementById('punto-b-status');
+
+            const locCentral = await db.locations.get('central');
+            const locCasa = await db.locations.get('casa');
+            const locPuntoA = await db.locations.get('punto_a');
+            const locPuntoB = await db.locations.get('punto_b');
+
+            if (locCentral) cocheraStatus.innerText = `Guardada (${locCentral.data.lat.toFixed(4)}, ${locCentral.data.lon.toFixed(4)})`;
+            if (locCasa) casaStatus.innerText = `Guardada (${locCasa.data.lat.toFixed(4)}, ${locCasa.data.lon.toFixed(4)})`;
+            if (locPuntoA) puntoAStatus.innerText = `Guardada (${locPuntoA.data.lat.toFixed(4)}, ${locPuntoA.data.lon.toFixed(4)})`;
+            if (locPuntoB) puntoBStatus.innerText = `Guardada (${locPuntoB.data.lat.toFixed(4)}, ${locPuntoB.data.lon.toFixed(4)})`;
+        }
+
+        async function setTheme(themeName, element) {
+            applyThemeUI(themeName);
+            await db.settings.put({ key: 'app_theme', value: themeName });
+        }
+
+        async function playAlertSound() {
+            unlockAudioContext();
+            const soundTypeRec = await db.settings.get('sound_type');
+            const soundType = soundTypeRec ? soundTypeRec.value : 'classic';
+
+            try {
+                const playNote = (delay, freq, dur, type = 'sine') => {
+                    const osc = globalAudioCtx.createOscillator();
+                    const gain = globalAudioCtx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, globalAudioCtx.currentTime + delay);
+                    gain.gain.setValueAtTime(0.4, globalAudioCtx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + delay + dur);
+                    osc.connect(gain);
+                    gain.connect(globalAudioCtx.destination);
+                    osc.start(globalAudioCtx.currentTime + delay);
+                    osc.stop(globalAudioCtx.currentTime + delay + dur);
+                };
+
+                if (soundType === 'harmonic') {
+                    playNote(0, 523.25, 0.25, 'triangle');
+                    playNote(0.2, 659.25, 0.3, 'triangle');
+                    playNote(0.4, 783.99, 0.4, 'triangle');
+                } else if (soundType === 'double') {
+                    playNote(0, 900, 0.12, 'square');
+                    playNote(0.15, 900, 0.12, 'square');
+                    playNote(0.3, 900, 0.2, 'square');
+                } else {
+                    playNote(0, 880, 0.15, 'sine');
+                    playNote(0.2, 880, 0.15, 'sine');
+                    playNote(0.4, 1174.66, 0.3, 'sine');
+                }
+            } catch (e) {}
+        }
+
+        function syncEventWithFirebase(eventData) {
+            fbDB.ref('alarms/' + eventData.id).set({
+                title: eventData.title,
+                date: eventData.date,
+                time: eventData.time,
+                timestamp: Date.now()
+            });
+        }
+
+        function initSmartTracking() {
+            if (!navigator.geolocation) return;
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            navigator.geolocation.watchPosition(async (pos) => {
+                const { latitude, longitude, speed } = pos.coords;
+                const currentSpeedKmh = speed ? (speed * 3.6) : 30;
+                const triggerDistanceKm = currentSpeedKmh > 25 ? 0.60 : 0.15;
+
+                const eventsList = await db.events.toArray();
+                const locCentral = await db.locations.get('central');
+                const locCasa = await db.locations.get('casa');
+                const locPuntoA = await db.locations.get('punto_a');
+                const locPuntoB = await db.locations.get('punto_b');
+
+                eventsList.forEach(async (ev) => {
+                    if (ev.loc === 'none' || ev.notified) return;
+
+                    let locationsToCheck = [];
+                    if (ev.loc === 'custom_map' && ev.customCoords) {
+                        locationsToCheck = [{ name: 'Lugar Personalizado', lat: ev.customCoords.lat, lon: ev.customCoords.lon }];
+                    } else if (ev.loc === 'central' && locCentral) {
+                        locationsToCheck = [{ name: 'Tu Base / Central', lat: locCentral.data.lat, lon: locCentral.data.lon }];
+                    } else if (ev.loc === 'casa' && locCasa) {
+                        locationsToCheck = [{ name: 'Tu Casa', lat: locCasa.data.lat, lon: locCasa.data.lon }];
+                    } else if (ev.loc === 'punto_a' && locPuntoA) {
+                        locationsToCheck = [{ name: 'Mi Punto A', lat: locPuntoA.data.lat, lon: locPuntoA.data.lon }];
+                    } else if (ev.loc === 'punto_b' && locPuntoB) {
+                        locationsToCheck = [{ name: 'Mi Punto B', lat: locPuntoB.data.lat, lon: locPuntoB.data.lon }];
+                    } else {
+                        locationsToCheck = geofenceZones[ev.loc] || [];
+                    }
+
+                    locationsToCheck.forEach(async (place) => {
+                        if (ev.notified) return;
+                        const distanceKm = calculateDistance(latitude, longitude, place.lat, place.lon);
+                        const timeToArrivalMinutes = (distanceKm / currentSpeedKmh) * 60;
+
+                        if (timeToArrivalMinutes <= 5 || distanceKm < triggerDistanceKm) {
+                            await playAlertSound();
+                            triggerHaptic();
+                            if (swRegistration && swRegistration.showNotification) {
+                                swRegistration.showNotification('TaskMaster Proximidad', {
+                                    body: `Estás llegando a ${place.name}. Tarea: ${ev.title}`,
+                                    icon: './icon.svg',
+                                    badge: './icon.svg',
+                                    requireInteraction: true,
+                                    renotify: true,
+                                    tag: 'geo_' + ev.id
+                                });
+                            }
+                            await db.events.update(ev.id, { notified: true });
+                        }
+                    });
+                });
+            }, null, options);
+        }
+
+        function initTimeAlarms() {
+            checkTimeAlarms();
+            setInterval(checkTimeAlarms, 10000);
+        }
+
+        async function checkTimeAlarms() {
+            const now = new Date();
+            const todayStr = getFormattedDateKey(now);
+            const eventsList = await db.events.where('date').equals(todayStr).toArray();
+
+            eventsList.forEach(async (ev) => {
+                if (ev.alarmFired || ev.time === '--:--') return;
+                const [evH, evM] = ev.time.split(':').map(Number);
+                const eventMinutes = evH * 60 + evM;
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                if (currentMinutes >= eventMinutes) {
+                    await playAlertSound();
+                    triggerHaptic();
+                    if (swRegistration && swRegistration.showNotification) {
+                        swRegistration.showNotification('TaskMaster Alerta', {
+                            body: ev.title,
+                            icon: './icon.svg',
+                            badge: './icon.svg',
+                            requireInteraction: true,
+                            renotify: true,
+                            tag: 'time_' + ev.id
+                        });
+                    }
+                    await db.events.update(ev.id, { alarmFired: true });
+                }
+            });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+    </script>
+</body>
+</html>
