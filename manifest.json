@@ -8,6 +8,7 @@
   "orientation": "portrait",
   "background_color": "#23130d",
   "theme_color": "#23130d",
+  "lang": "es",
   "description": "Aplicación multipropósito de gestión de tareas, calendario y notificaciones push multi-dispositivo con sello de calidad medbasha.",
   "icons": [
     {
