@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo base con margen seguro para recortes maskable (Android/iOS) -->
+  <rect width="512" height="512" rx="120" fill="#23130d"/>
+  
+  <!-- Tarjeta interior flotante "Glass Effect" -->
+  <rect x="86" y="86" width="340" height="340" rx="48" fill="#341e16" stroke="#e5934a" stroke-width="12" opacity="0.95"/>
+  
+  <!-- Línea superior representativa del Calendario / Agenda -->
+  <path d="M150 160h212" stroke="#e5934a" stroke-width="14" stroke-linecap="round" opacity="0.4"/>
+  
+  <!-- Marca de verificación Tarea Completada (Checkmark) -->
+  <path d="M165 265l60 60 120-120" fill="none" stroke="#e5934a" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Punto brillante representativo de Geolocalización / IA -->
+  <circle cx="345" cy="160" r="14" fill="#38bdf8"/>
+</svg>
